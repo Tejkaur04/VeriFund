@@ -543,6 +543,7 @@ function CampaignsSection({showToast}) {
   const [description, setDescription] = useState("");
   const [goal, setGoal] = useState("");
   const [duration, setDuration] = useState("");
+  const [myDonations, setMyDonations] = useState({});
 
   const inputStyle = {
   width: "100%",
@@ -644,6 +645,7 @@ useEffect(() => {
 
   const load = async () => {
     const c = window._verifundContract;
+    const account = window._verifundAccount;
     if (!c) { showToast("Connect your wallet first!"); return; }
     setLoading(true);
     try {
@@ -653,6 +655,7 @@ useEffect(() => {
         const camp    = await c.getCampaign(i);
         const donors  = await c.getDonorCount(i);
         const timeRem = await c.getTimeRemaining(i);
+        const myDonation = await c.getMyDonation(i);
         list.push({
           id: i,
           title: camp.title,
@@ -663,6 +666,7 @@ useEffect(() => {
           goalReached: camp.goalReached,
           donorCount: Number(donors),
           timeRemaining: timeRem,
+          myDonation: myDonation
         });
       }
       setCampaigns(list);
@@ -722,7 +726,28 @@ const handleCreate = async () => {
   }
 };
 
+const claimRefund = async (id) => {
+  try {
+    const c = window._verifundContract;
 
+    const tx = await c.claimRefund(id);
+    await tx.wait();
+
+    showToast("Refund claimed 💸");
+    load(); // refresh UI
+  } catch (e) {
+    showToast("Error: " + (e.reason || e.message), "error");
+  }
+};
+
+const canDonate = selectedCampaign &&
+  Number(selectedCampaign.timeRemaining) > 0 &&
+  !selectedCampaign.goalReached;
+
+const canRefund = selectedCampaign &&
+  Number(selectedCampaign.timeRemaining) <= 0 &&
+  !selectedCampaign.goalReached &&
+  Number(selectedCampaign.myDonation) > 0;
   return (
     <div id="campaigns" style={{ padding: "4rem 2rem", maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
@@ -787,7 +812,7 @@ const handleCreate = async () => {
                 <div style={{ marginBottom: 16 }}>
 
                 </div>
-                {Number(c.timeRemaining) > 0 && !c.goalReached && (
+                {Number(c.timeRemaining) > 0 && !c.goalReached && Number(c.myDonation) > 0 && (
                   <button onClick={() => donate(c.id)} style={{
                     width: "100%", padding: "10px", borderRadius: 8,
                     background: "#111", color: "white", border: "none",
@@ -796,6 +821,24 @@ const handleCreate = async () => {
                     Donate ETH
                   </button>
                 )}
+                {Number(c.timeRemaining) <= 0 && !c.goalReached && (
+  <button
+    onClick={() => claimRefund(c.id)}
+    style={{
+      width: "100%",
+      padding: "10px",
+      borderRadius: 8,
+      background: "#DC2626",
+      color: "white",
+      border: "none",
+      fontWeight: 700,
+      cursor: "pointer",
+      fontSize: 14
+    }}
+  >
+    Claim Refund
+  </button>
+)}
               </div>
             </div>
           );
@@ -919,8 +962,52 @@ const handleCreate = async () => {
   />
   
         {/* ACTIONS */}
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
+        
+        {/* ACTIONS */}
+<div style={{ display: "flex", gap: 10 }}>
+  {canDonate && (
+    <button
+      onClick={() => donate(selectedCampaign.id)}
+      style={{
+        flex: 1, padding: "12px", background: "#111",
+        color: "white", border: "none", borderRadius: 8,
+        fontWeight: 700, fontSize: 14, cursor: "pointer",
+        transition: "all 0.2s"
+      }}
+      onMouseEnter={e => e.target.style.background = "#2563EB"}
+      onMouseLeave={e => e.target.style.background = "#111"}
+    >
+      Donate ETH
+    </button>
+  )}
+
+  {canRefund && (
+    <button
+      onClick={() => claimRefund(selectedCampaign.id)}
+      style={{
+        flex: 1, padding: "12px", background: "#DC2626",
+        color: "white", border: "none", borderRadius: 8,
+        fontWeight: 700, fontSize: 14, cursor: "pointer",
+      }}
+      onMouseEnter={e => e.target.style.background = "#B91C1C"}
+      onMouseLeave={e => e.target.style.background = "#DC2626"}
+    >
+      Claim Refund
+    </button>
+  )}
+
+  <button
+    onClick={() => setSelectedCampaign(null)}
+    style={{
+      padding: "12px 16px", background: "#eee",
+      border: "none", borderRadius: 8,
+      fontWeight: 600, cursor: "pointer"
+    }}
+  >
+    Close
+  </button>
+</div>
+          {/* <button
             onClick={() => donate(selectedCampaign.id)}
             style={{
               flex: 1,
@@ -952,8 +1039,8 @@ const handleCreate = async () => {
             }}
           >
             Close
-          </button>
-        </div>
+          </button> */}
+        {/* </div> */}
       </div>
 
     </div>
