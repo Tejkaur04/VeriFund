@@ -12,6 +12,11 @@ VeriFund is a decentralized crowdfunding platform built on Ethereum where every 
 
 ---
 
+<video src="verifund.mp4" controls width="600"></video>
+
+
+---
+
 ## 📋 Table of Contents
 
 - [The Problem](#the-problem)
